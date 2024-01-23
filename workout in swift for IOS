@@ -1,0 +1,452 @@
+//
+//  ContentView.swift
+//  Workout
+//
+//  Created by Harsh Joshi on 2023-12-25.
+//
+
+import SwiftUI
+import AuthenticationServices
+import CoreLocation
+import MessageUI
+
+
+// Define a simple struct to represent a user's location
+struct UserLocation: Codable {
+    var latitude: Double
+    var longitude: Double
+}
+
+enum NavigationItem {
+    case hardWorkouts
+    case chest
+    case back
+    case abs
+    case legs
+    case chat
+}
+
+struct HardWorkoutListView: View {
+    @ObservedObject var locationManager = LocationManager()
+
+    var body: some View {
+        NavigationView {
+            List {
+                NavigationLink(destination: ChestWorkoutListView()) {
+                    Text("Chest Workouts")
+                }
+                NavigationLink(destination: BackWorkoutListView()) {
+                    Text("Back Workouts")
+                }
+                NavigationLink(destination: AbsWorkoutListView()) {
+                    Text("Abs Workouts")
+                }
+                NavigationLink(destination: LegsWorkoutListView()) {
+                    Text("Legs Workouts")
+                }
+                
+                // Example: Display user's current location
+                if let userLocation = locationManager.userLocation {
+                    Text("Your Location: \(userLocation.latitude), \(userLocation.longitude)")
+
+                }
+            }
+            .listStyle(InsetGroupedListStyle())
+            .background(Color.black)
+            .navigationTitle("Hard Workouts") // Moved here
+        }
+    }
+}
+
+
+class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+    @Published var userLocation: UserLocation?
+
+    private var locationManager = CLLocationManager()
+
+    override init() {
+        super.init()
+        setupLocationManager()
+        loadSavedLocation()
+    }
+
+    private func setupLocationManager() {
+        locationManager.delegate = self
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.startUpdatingLocation()
+    }
+
+    private func loadSavedLocation() {
+        if let data = UserDefaults.standard.data(forKey: "userLocation") {
+            let decoder = JSONDecoder()
+            if let location = try? decoder.decode(UserLocation.self, from: data) {
+                self.userLocation = location
+            }
+        }
+    }
+
+    private func saveLocation() {
+        if let encoded = try? JSONEncoder().encode(userLocation) {
+            UserDefaults.standard.set(encoded, forKey: "userLocation")
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else { return }
+        userLocation = UserLocation(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
+        saveLocation()
+    }
+}
+
+struct ChatButton: View {
+    @State private var isShowingMessageView = false
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        Button(action: {
+            self.isShowingMessageView.toggle()
+        }) {
+            Text("Start Chat")
+                .font(.headline)
+                .padding()
+                .frame(minWidth: 100)
+                .background(Color("white"))
+                .foregroundColor(.black)
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.black, lineWidth: 2)
+                )
+        }
+        .sheet(isPresented: $isShowingMessageView) {
+            MessageComposeView()
+        }
+    }
+}
+
+struct MessageComposeView: UIViewControllerRepresentable {
+    class Coordinator: NSObject, MFMessageComposeViewControllerDelegate {
+        func messageComposeViewController(_ controller: MFMessageComposeViewController, didFinishWith result: MessageComposeResult) {
+            controller.dismiss(animated: true)
+        }
+    }
+
+    func makeUIViewController(context: Context) -> MFMessageComposeViewController {
+        let viewController = MFMessageComposeViewController()
+        viewController.messageComposeDelegate = context.coordinator
+        viewController.recipients = ["1234567890"] // Replace with the recipient's phone number
+        viewController.body = "Let's chat! 🚀"
+        return viewController
+    }
+
+    func updateUIViewController(_ uiViewController: MFMessageComposeViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        return Coordinator()
+    }
+}
+struct BackWorkoutListView: View {
+    @Environment(\.colorScheme) var colorScheme
+    @State private var workouts: [Workout] = [
+        
+        // Back/Bicep Workouts
+        Workout(name: "Back/Bicep: Warm Up", crossedOut: false),
+        Workout(name: "Barbell Chin Up (5 sets: 6/10/8/6/16 reps)", crossedOut: false),
+        Workout(name: "Barbell Straight Arm Pull Down (5 sets: 6/12/10/8/16 reps)", crossedOut: false),
+        Workout(name: "Barbell Bent Over Row (3 sets: 8 reps)", crossedOut: false),
+        Workout(name: "Barbell Pullover (3 sets: 10 reps)", crossedOut: false),
+        Workout(name: "Barbell Bicep Curl (3 sets: 12 reps)", crossedOut: false),
+        Workout(name: "Standing Face Pull (2 sets: 10/15 reps)", crossedOut: false),
+        Workout(name: "Neutral Single Arm Straight Arm Pull-Down (2 sets: 10/15 reps)", crossedOut: false),
+        Workout(name: "Hammer Curl (2 sets: 10/15 reps)", crossedOut: false),
+        Workout(name: "Back/Bicep: Cool Down", crossedOut: false)
+    ]
+
+    var body: some View {
+        List {
+            ForEach($workouts) { $workout in
+                Button(action: {
+                    workout.crossedOut.toggle()
+                }) {
+                    Text(workout.name)
+                        .strikethrough(workout.crossedOut, color: .black)
+                        .foregroundColor(workout.crossedOut ? .gray : .white)
+                }
+            }
+        }
+        .listStyle(InsetGroupedListStyle())
+        .background(Color.black)
+    }
+}
+
+struct AbsWorkoutListView: View {
+    @Environment(\.colorScheme) var colorScheme
+    @State private var chestWorkouts: [Workout] = [
+        
+        // Additional chest workouts
+        Workout(name: "Lean Back Front Raises (4 x 12)", crossedOut: false),
+        Workout(name: "Modified V-Sit Overhead Raises (4 x 12)", crossedOut: false),
+        Workout(name: "Leg Front Over (3 x 12 each side)", crossedOut: false),
+        Workout(name: "Leg Side to Side Overs (3 x 12 each side)", crossedOut: false),
+        Workout(name: "Sit Up Crossover (3 x 12)", crossedOut: false),
+        Workout(name: "Dumbbell Overhead Leg Raise Hold (2 x 30 seconds)", crossedOut: false),
+        Workout(name: "Dead Bugs (2 x 15 each side)", crossedOut: false),
+        Workout(name: "Plank (2 x 60 seconds)", crossedOut: false),
+        Workout(name: "Leopard Crawl (2 x 30 seconds)", crossedOut: false),
+        Workout(name: "Suitcase March (2 x 40 seconds each side)", crossedOut: false),
+        Workout(name: "Single Arm Lateral Leg Swing (2 x 40 seconds each side)", crossedOut: false),
+        Workout(name: "Mountain Climbers (2 x 40 seconds)", crossedOut: false),
+        Workout(name: "Bird Dog with Row (2 x 8/10 both sides)", crossedOut: false),
+        Workout(name: "Lateral Bridge with Rotation (2 x 45 seconds each side)", crossedOut: false),
+        Workout(name: "Plank (1 x 60 seconds)", crossedOut: false),
+        Workout(name: "Side Plank with Hip Dips (2 x 45 seconds both sides)", crossedOut: false),
+        Workout(name: "V Up (1 x 60 seconds)", crossedOut: false),
+        Workout(name: "Sit Up (1 x 60 seconds)", crossedOut: false)
+    ]
+
+    var body: some View {
+        List {
+            ForEach($chestWorkouts) { $workout in
+                Button(action: {
+                    workout.crossedOut.toggle()
+                }) {
+                    Text(workout.name)
+                        .strikethrough(workout.crossedOut, color: .black)
+                        .foregroundColor(workout.crossedOut ? .gray : .white)
+                }
+            }
+        }
+        .listStyle(InsetGroupedListStyle())
+        .background(Color.black)
+        .navigationTitle("Chest Workouts")
+    }
+}
+
+struct LegsWorkoutListView: View {
+    @Environment(\.colorScheme) var colorScheme
+    @State private var chestWorkouts: [Workout] = [
+        
+        // Additional chest workouts
+        Workout(name: "Lean Back Front Raises (4 x 12)", crossedOut: false),
+        Workout(name: "Modified V-Sit Overhead Raises (4 x 12)", crossedOut: false),
+        Workout(name: "Leg Front Over (3 x 12 each side)", crossedOut: false),
+        Workout(name: "Leg Side to Side Overs (3 x 12 each side)", crossedOut: false),
+        Workout(name: "Sit Up Crossover (3 x 12)", crossedOut: false),
+        Workout(name: "Dumbbell Overhead Leg Raise Hold (2 x 30 seconds)", crossedOut: false),
+        Workout(name: "Dead Bugs (2 x 15 each side)", crossedOut: false),
+        Workout(name: "Plank (2 x 60 seconds)", crossedOut: false),
+        Workout(name: "Leopard Crawl (2 x 30 seconds)", crossedOut: false),
+        Workout(name: "Suitcase March (2 x 40 seconds each side)", crossedOut: false),
+        Workout(name: "Single Arm Lateral Leg Swing (2 x 40 seconds each side)", crossedOut: false),
+        Workout(name: "Mountain Climbers (2 x 40 seconds)", crossedOut: false),
+        Workout(name: "Bird Dog with Row (2 x 8/10 both sides)", crossedOut: false),
+        Workout(name: "Lateral Bridge with Rotation (2 x 45 seconds each side)", crossedOut: false),
+        Workout(name: "Plank (1 x 60 seconds)", crossedOut: false),
+        Workout(name: "Side Plank with Hip Dips (2 x 45 seconds both sides)", crossedOut: false),
+        Workout(name: "V Up (1 x 60 seconds)", crossedOut: false),
+        Workout(name: "Sit Up (1 x 60 seconds)", crossedOut: false),
+
+        // Additional workouts
+        Workout(name: "Quadruped Hip Circle (1 x 30 seconds)", crossedOut: false),
+        Workout(name: "Glute Bridge (1 x 30 seconds)", crossedOut: false),
+        Workout(name: "Bodyweight Squat (1 x 30 seconds)", crossedOut: false),
+        Workout(name: "Barbell Hip Thrust (5 x 6/6/8/10/12)", crossedOut: false),
+        Workout(name: "Barbell Front Racked Split Squat (5 x 6/8/10/12/15 each side)", crossedOut: false),
+        Workout(name: "Alternating Goblet Reverse Lunge (3 x 24)", crossedOut: false),
+        Workout(name: "Single Leg RDL (3 x 10)", crossedOut: false),
+        Workout(name: "Bulgarian Split Squat (3 x 8)", crossedOut: false),
+        Workout(name: "Resisted Glute Bridge (2 x 45 sec/60 sec)", crossedOut: false),
+        Workout(name: "Resistance Step Up (2 x 15 sec/20 sec each side)", crossedOut: false),
+        Workout(name: "Bent Knee Calf Raise (2 x 45 sec/60 sec)", crossedOut: false)
+    ]
+
+    var body: some View {
+        List {
+            ForEach($chestWorkouts) { $workout in
+                Button(action: {
+                    workout.crossedOut.toggle()
+                }) {
+                    Text(workout.name)
+                        .strikethrough(workout.crossedOut, color: .black)
+                        .foregroundColor(workout.crossedOut ? .gray : .white)
+                }
+            }
+        }
+        .listStyle(InsetGroupedListStyle())
+        .background(Color.black)
+        .navigationTitle("Chest Workouts")
+    }
+}
+
+
+struct ChestWorkoutListView: View {
+    @Environment(\.colorScheme) var colorScheme
+    @State private var chestWorkouts: [Workout] = [
+        // Add your chest workouts here
+        // Chest/Tricep Workouts
+        Workout(name: "Chest/Tricep: Warm Up", crossedOut: false),
+        Workout(name: "Wide Grip Barbell Bench Press (6 sets: 8/10/15/20/15/10 reps)", crossedOut: false),
+        Workout(name: "Inclined Chest Fly (2 sets: 10 reps)", crossedOut: false),
+        Workout(name: "Standing Incline Press (2 sets: 10 reps)", crossedOut: false),
+        Workout(name: "Foot Elevated Push-Up (2 sets: 45 seconds)", crossedOut: false),
+        Workout(name: "Push-Up (2 sets: 30 seconds)", crossedOut: false),
+        Workout(name: "Incline Push-Up (2 sets: 20 seconds)", crossedOut: false),
+        Workout(name: "Single Arm Bench Press (1 set: 25 reps each arm)", crossedOut: false),
+        Workout(name: "Chest/Tricep: Cool Down", crossedOut: false),
+
+        // Add more workouts as needed
+    ]
+
+    var body: some View {
+        List {
+            ForEach($chestWorkouts) { $workout in
+                Button(action: {
+                    workout.crossedOut.toggle()
+                }) {
+                    Text(workout.name)
+                        .strikethrough(workout.crossedOut, color: .black)
+                        .foregroundColor(workout.crossedOut ? .gray : .white)
+                }
+            }
+        }
+        .listStyle(InsetGroupedListStyle())
+        .background(Color.black)
+        .navigationTitle("Chest Workouts")
+    }
+}
+
+
+struct Workout: Identifiable {
+    let id = UUID()
+    var name: String
+    var crossedOut: Bool
+    @Environment(\.colorScheme) var colorScheme
+}
+
+struct ContentView: View {
+    @State private var selectedWorkoutLevel: String = "None"
+    @State private var navigationPath = NavigationPath()
+    @Environment(\.colorScheme) var colorScheme
+    @ObservedObject var locationManager = LocationManager()
+
+    var body: some View {
+        NavigationStack(path: $navigationPath) {
+            GeometryReader { geometry in
+                Color.black
+                    .edgesIgnoringSafeArea(.all)
+                    .overlay(
+                        VStack {
+                            Spacer()
+
+                            Text("Level of Workout")
+                                .font(.custom("MilitaryFont", size: 60))
+                                .foregroundColor(.white)
+                                .padding(.top, 40)
+
+                            workoutButtons(geometry: geometry)
+
+                            Text("Selected Workout Level: \(selectedWorkoutLevel)")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .padding()
+                            
+                            // Add the chat button here
+                            ChatButton()
+
+                            Spacer()
+                        }
+                    )
+            }
+            .navigationDestination(for: NavigationItem.self) { item in
+                switch item {
+                case .hardWorkouts:
+                    HardWorkoutListView()
+                case .chest:
+                    ChestWorkoutListView()
+                case .back:
+                    BackWorkoutListView()
+                case .abs:
+                    AbsWorkoutListView()
+                case .legs:
+                    LegsWorkoutListView()
+                case .chat:
+                    ChatButton()
+                    
+                }
+            }
+            .environmentObject(locationManager) // Pass locationManager to child views
+            .navigationBarHidden(true)
+            .background(Color.black)
+        }
+        .listStyle(InsetGroupedListStyle())
+        .navigationTitle("Workout App") // This can be removed if you want to hide the navigation title
+    }
+
+    @ViewBuilder
+    private func workoutButtons(geometry: GeometryProxy) -> some View {
+        Group {
+            if geometry.size.width < geometry.size.height {
+                VStack(spacing: 30) {
+                    workoutButtonViews()
+                }
+            } else {
+                HStack(spacing: 30) {
+                    workoutButtonViews()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func workoutButtonViews() -> some View {
+        ForEach(["Easy", "Medium", "Hard", "Chat"], id: \.self) { level in
+            Button(action: {
+                selectedWorkoutLevel = level
+                if level == "Hard" {
+                    navigationPath.append(NavigationItem.hardWorkouts)
+                } else if level == "Chest" {
+                    navigationPath.append(NavigationItem.chest)
+                } else if level == "Back" {
+                    navigationPath.append(NavigationItem.back)
+                } else if level == "Abs" {
+                    navigationPath.append(NavigationItem.abs)
+                } else if level == "Legs" {
+                    navigationPath.append(NavigationItem.legs)
+                }
+                if level == "Chat"{
+                    navigationPath.append(NavigationItem.chat)
+                }
+            }) {
+                Text(level)
+                    .font(.headline)
+                    .padding()
+                    .frame(minWidth: 100)
+                    .background(Color("ButtonBackground"))
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.white, lineWidth: 2)
+                    )
+            }
+        }
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
+}
+
+
+/*
+struct ContentView_Previews: PreviewProvider {
+     static var previews: some View {
+         ContentView()
+     }
+ }
+*/
+#Preview {
+    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+}
